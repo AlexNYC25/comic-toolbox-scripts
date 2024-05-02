@@ -331,6 +331,17 @@ def parseDirectoryForFiles(directory, recursive):
         if not recursive:
             break
     return files
+
+'''
+    walks through a directory and creates a copy of the directory structure in the directory passed in
+'''
+def copyDirectoryStructure(directory, output):
+    for root, dirs, files in os.walk(directory):
+        for dir in dirs:
+            dir_path = os.path.join(root, dir)
+            relative_path = os.path.relpath(dir_path, directory)
+            output_dir = os.path.join(output, relative_path)
+            os.makedirs(output_dir, exist_ok=True)
     
 def outputDirectoryContents(directory):
     for root, dirs, files in os.walk(directory):
@@ -345,7 +356,7 @@ def getFileNameFromPath(path):
     filename_without_extension = os.path.splitext(filename)[0]
     return filename_without_extension
 
-def convertComicBook(input, output, convertExtension, convertImageFileType, compress, compressRate, comicinfo):
+def convertComicBook(input, output, convertExtension, convertImageFileType, compress, compressRate, comicinfo, inputDirectory=None):
     tempWorkDir = createTempDirectory(output)
 
     fileCompressionType = determine_compression_type(input)
@@ -377,7 +388,30 @@ def convertComicBook(input, output, convertExtension, convertImageFileType, comp
         print('Error: Unsupported image conversion type')
         return False
 
-    outputFilePath = output + '/' + getFileNameFromPath(input) + '.' + convertExtension
+    outputFilePath = None
+
+    if inputDirectory is not None:
+        # remove the input directory from the input file path
+        inputDirectory = os.path.abspath(inputDirectory)
+        inputDirectory = inputDirectory + '/'
+        inputPath = input.replace(inputDirectory, '/')
+        fileName = getFileNameFromPath(inputPath)
+
+        splitPath = inputPath.split('/')
+        splitPath.pop()  # remove the file name from the path
+        inputPath = '/'.join(splitPath)
+        # create the output file path
+
+        outputFilePath = output + inputPath + '/' + fileName + '.' + convertExtension
+        print('output ' + outputFilePath)
+    else:
+        outputFilePath = output + '/' + getFileNameFromPath(input) + '.' + convertExtension
+
+
+    if outputFilePath is None:
+        print('Error: Output file path is not set')
+        exit(1)
+
     if(convertExtension == 'cbz'):
         compressDirectoryToComicBookFileCBZ(tempWorkDir, outputFilePath)
     elif(convertExtension == 'cbr'):
@@ -399,7 +433,7 @@ if __name__ == '__main__':
     inputType = checkIfInputIsFileOrDirectory(args.input)
     if inputType is None:
         print('Error: Input value is not valid')
-        #exit(1)
+        exit(1)
 
     outputValid = checkIfDirectoryExists(args.output)
     if not outputValid:
@@ -417,10 +451,12 @@ if __name__ == '__main__':
     if inputType == 'directory':
         files = parseDirectoryForFiles(args.input, args.recursive)
 
+        copyDirectoryStructure(args.input, args.output)
+
         for file in files:
             if(checkIfFileIsComicBookFile(file)):
                 print(f'Converting {file} - index {files.index(file) + 1} of {len(files)}')
-                convertComicBook(file, args.output, args.convert_extension, args.convert_image_file_type, args.compress, args.compress_rate, args.comicinfo)
+                convertComicBook(file, args.output, args.convert_extension, args.convert_image_file_type, args.compress, args.compress_rate, args.comicinfo, args.input)
     
     #print(f'Time taken: {time.time() - startTime}')
         
