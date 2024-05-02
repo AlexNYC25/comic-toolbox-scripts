@@ -7,6 +7,11 @@ import py7zr
 import tempfile
 from PIL import Image
 import math as Math
+from concurrent.futures import ThreadPoolExecutor
+import time
+
+# Define the executor globally if the conversion tasks will be frequently called
+executor = ThreadPoolExecutor(max_workers=4)
 
 def parseArguments():
     parser = argparse.ArgumentParser()
@@ -58,10 +63,10 @@ def checkIfInputIsFileOrDirectory(input):
         return None
     
 def checkIfFileIsComicBookFile(file):
-    return file.lower().endswith(('.cbz', '.cbr', '.zip', '.rar', '.cb7', '.7z'))
+    return file.lower().endswith(('.cbz', '.cbr', '.zip', '.rar', '.cb7', '.7z')) and not file[0] == '.'
 
-def createTempDirectory():
-    temp_dir = tempfile.mkdtemp()
+def createTempDirectory(directory):
+    temp_dir = tempfile.mkdtemp(dir=directory)
     return temp_dir
 
 def determine_compression_type(file_path):
@@ -141,16 +146,12 @@ def decompress7zFile(file, output):
 '''
 def convertImageToWebp(imagePath, compressQuality=100):
     try:
-        sizeOfOriginal = os.path.getsize(imagePath)
-        sizeOfWebp = Math.inf
-        webpPath = None
-        sizeOfJpeg = Math.inf
-        jpegPath = None
         # Open the image file
         with Image.open(imagePath) as image:
+            sizeOfOriginal = os.path.getsize(imagePath)
             # resize the image to half its size
             if image.width > 3500 or image.height > 3500:
-                image = image.resize((int(image.width/2), int(image.height/2)))
+                image = image.resize((int(image.width/2), int(image.height/2)), Image.LANCZOS)
 
             # Convert the image to webp format
             webpPath = imagePath.replace(imagePath.split('.')[-1], 'webp')
@@ -159,11 +160,11 @@ def convertImageToWebp(imagePath, compressQuality=100):
 
             sizeOfWebp = os.path.getsize(webpPath)
         
-        # Delete the original image file if the webp file is smaller
-        if sizeOfWebp < sizeOfOriginal:
-            os.remove(imagePath)
-        else:
-            os.remove(webpPath)
+            # Delete the original image file if the webp file is smaller
+            if sizeOfWebp < sizeOfOriginal:
+                os.remove(imagePath)
+            else:
+                os.remove(webpPath)
     except Exception as e:
         print(f'Error: Failed to convert image {imagePath}')
         print(e)
@@ -217,14 +218,22 @@ def convertImageToJpg(imagePath):
     
 
 def traverseDirectoryForImageWebpConversion(directory, compress, compressRate):
+    futures = []
     for root, dirs, files in os.walk(directory):
         for file in files:
             if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.gif')) and not file[0] == '.':
                 image_path = os.path.join(root, file)
                 if compress:
-                    convertImageToWebp(image_path, compressRate)
+                    #convertImageToWebp(image_path, compressRate)
+                    future = executor.submit(convertImageToWebp, image_path, compressRate)
+                    futures.append(future)
                 else:
-                    convertImageToWebp(image_path)
+                    #convertImageToWebp(image_path)
+                    future = executor.submit(convertImageToWebp, image_path)
+                    futures.append(future)
+
+    for future in futures:
+        future.result()
 
 def traverseDirectoryForImagePngConversion(directory, compress, compressRate):
     for root, dirs, files in os.walk(directory):
@@ -316,6 +325,8 @@ def parseDirectoryForFiles(directory, recursive):
     files = []
     for root, dirs, fileNames in os.walk(directory):
         for file in fileNames:
+            if file[0] == '.':  # Skip hidden files
+                continue
             files.append(os.path.join(root, file))
         if not recursive:
             break
@@ -335,7 +346,7 @@ def getFileNameFromPath(path):
     return filename_without_extension
 
 def convertComicBook(input, output, convertExtension, convertImageFileType, compress, compressRate, comicinfo):
-    tempWorkDir = createTempDirectory()
+    tempWorkDir = createTempDirectory(output)
 
     fileCompressionType = determine_compression_type(input)
 
@@ -402,12 +413,14 @@ if __name__ == '__main__':
         else:
             print('Error: Input file is not a comic book file')
 
-
+    startTime = time.time()
     if inputType == 'directory':
         files = parseDirectoryForFiles(args.input, args.recursive)
 
         for file in files:
             if(checkIfFileIsComicBookFile(file)):
-                print(f'Converting {file}')
+                print(f'Converting {file} - index {files.index(file) + 1} of {len(files)}')
                 convertComicBook(file, args.output, args.convert_extension, args.convert_image_file_type, args.compress, args.compress_rate, args.comicinfo)
+    
+    #print(f'Time taken: {time.time() - startTime}')
         
