@@ -13,7 +13,7 @@ import time
 # Define the executor globally if the conversion tasks will be frequently called
 executor = ThreadPoolExecutor(max_workers=4)
 
-def parseArguments():
+def parse_arguments():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-r', '--recursive', action='store_true', help='Recursively convert all files in the input directory')
@@ -36,7 +36,7 @@ def parseArguments():
 
     return args
 
-def validateArguments(args):
+def validate_arguments(args):
     if args.input is None:
         print('Error: Input file or directory not set')
         return False
@@ -47,25 +47,25 @@ def validateArguments(args):
 
     return True
 
-def checkIfFileExists(file):
+def check_if_file_exists(file):
     return os.path.exists(file)
 
-def checkIfDirectoryExists(directory):
+def check_if_directory_exists(directory):
     return os.path.isdir(directory)
 
-def checkIfInputIsFileOrDirectory(input):
+def check_if_input_is_file_or_directory(input):
     
-    if checkIfDirectoryExists(input):
+    if check_if_directory_exists(input):
         return 'directory'
-    if checkIfFileExists(input):
+    if check_if_file_exists(input):
         return 'file'
     else:
         return None
     
-def checkIfFileIsComicBookFile(file):
+def check_if_file_is_comic_book_file(file):
     return file.lower().endswith(('.cbz', '.cbr', '.zip', '.rar', '.cb7', '.7z')) and not file[0] == '.'
 
-def createTempDirectory(directory):
+def create_temp_directory(directory):
     temp_dir = tempfile.mkdtemp(dir=directory)
     return temp_dir
 
@@ -92,14 +92,14 @@ def determine_compression_type(file_path):
 
     returns True if the file was successfully uncompressed, False otherwise
 '''
-def decompressZipFile(file, output):
+def decompress_zip_file(file, output):
 
     try:
         with zipfile.ZipFile(file, 'r') as zip_ref:
             zip_ref.extractall(output)
         return True
     except Exception as e:
-        print(f'Error: Failed to decompress file {file}')
+        print(f'Error: Failed to decompress ZIP file {file}')
         print(e)
         return False
     
@@ -110,13 +110,13 @@ def decompressZipFile(file, output):
 
     returns True if the file was successfully uncompressed, False otherwise
 '''
-def decompressRarFile(file, output):
+def decompress_rar_file(file, output):
     try:
         with rarfile.RarFile(file, 'r') as rar_ref:
             rar_ref.extractall(output)
         return True
     except Exception as e:
-        print(f'Error: Failed to decompress file {file}')
+        print(f'Error: Failed to decompress RAR file {file}')
         print(e)
         return False
     
@@ -127,13 +127,13 @@ def decompressRarFile(file, output):
 
     returns True if the file was successfully uncompressed, False otherwise
 '''
-def decompress7zFile(file, output):
+def decompress_7z_file(file, output):
     try:
         with py7zr.SevenZipFile(file, mode='r') as archive:
             archive.extractall(output)
         return True
     except Exception as e:
-        print(f'Error: Failed to decompress file {file}')
+        print(f'Error: Failed to decompress 7z file {file}')
         print(e)
         return False
     
@@ -144,29 +144,29 @@ def decompress7zFile(file, output):
 
     returns True if the image was successfully converted and original file was deleted, False otherwise
 '''
-def convertImageToWebp(imagePath, compressQuality=100):
+def convert_image_to_webp(image_path, compress_quality=100):
     try:
         # Open the image file
-        with Image.open(imagePath) as image:
-            sizeOfOriginal = os.path.getsize(imagePath)
+        with Image.open(image_path) as image:
+            size_of_original = os.path.getsize(image_path)
             # resize the image to half its size
             if image.width > 3500 or image.height > 3500:
                 image = image.resize((int(image.width/2), int(image.height/2)), Image.LANCZOS)
 
             # Convert the image to webp format
-            webpPath = imagePath.replace(imagePath.split('.')[-1], 'webp')
+            webp_path = image_path.replace(image_path.split('.')[-1], 'webp')
             image = image.convert("RGB")  # Convert the image to RGB mode
-            image.save(webpPath, 'webp', quality=compressQuality, optimize=True, lossless=False)
+            image.save(webp_path, 'webp', quality=compress_quality, optimize=True, lossless=False)
 
-            sizeOfWebp = os.path.getsize(webpPath)
+            size_of_webp = os.path.getsize(webp_path)
         
             # Delete the original image file if the webp file is smaller
-            if sizeOfWebp < sizeOfOriginal:
-                os.remove(imagePath)
+            if size_of_webp < size_of_original:
+                os.remove(image_path)
             else:
-                os.remove(webpPath)
+                os.remove(webp_path)
     except Exception as e:
-        print(f'Error: Failed to convert image {imagePath}')
+        print(f'Error: Failed to convert webp image {image_path}')
         print(e)
         return False
     
@@ -176,17 +176,17 @@ def convertImageToWebp(imagePath, compressQuality=100):
 
     returns True if the image was successfully converted, False otherwise
 '''
-def convertImageToPng(imagePath):
+def convert_image_to_png(image_path):
     try:
         # Open the image file
-        with Image.open(imagePath) as image:
+        with Image.open(image_path) as image:
             # Convert the image to png format
-            pngPath = imagePath.replace(image.format.lower(), 'png')
-            image.save(pngPath, 'png')
+            png_path = image_path.replace(image.format.lower(), 'png')
+            image.save(png_path, 'png')
         
         return True
     except Exception as e:
-        print(f'Error: Failed to convert image {imagePath}')
+        print(f'Error: Failed to convert PNG image {image_path}')
         print(e)
         return False
     
@@ -196,28 +196,28 @@ def convertImageToPng(imagePath):
 
     returns True if the image was successfully converted, False otherwise
 '''
-def convertImageToJpg(imagePath):
+def convert_image_to_jpg(image_path):
     try:
         # Open the image file
-        with Image.open(imagePath) as image:
+        with Image.open(image_path) as image:
             # Convert the image to RGB if it's not already in a compatible format
             if image.mode not in ('RGB', 'RGBA'):
                 image = image.convert('RGB')
 
             # Convert the image to jpg format
-            jpgPath = imagePath.replace(imagePath.split('.')[-1], 'jpeg')
-            image.save(jpgPath, 'jpeg', quality=1)
+            jpg_path = image_path.replace(image_path.split('.')[-1], 'jpeg')
+            image.save(jpg_path, 'jpeg', quality=1)
             
-        os.remove(imagePath)
+        os.remove(image_path)
         
         return True
     except Exception as e:
-        print(f'Error: Failed to convert image {imagePath}')
+        print(f'Error: Failed to convert JPG image {image_path}')
         print(e)
         return False
     
 
-def traverseDirectoryForImageWebpConversion(directory, compress, compressRate):
+def traverse_directory_for_image_webp_conversion(directory, compress, compress_rate):
     futures = []
     for root, dirs, files in os.walk(directory):
         for file in files:
@@ -225,29 +225,29 @@ def traverseDirectoryForImageWebpConversion(directory, compress, compressRate):
                 image_path = os.path.join(root, file)
                 if compress:
                     #convertImageToWebp(image_path, compressRate)
-                    future = executor.submit(convertImageToWebp, image_path, compressRate)
+                    future = executor.submit(convert_image_to_webp, image_path, compress_rate)
                     futures.append(future)
                 else:
                     #convertImageToWebp(image_path)
-                    future = executor.submit(convertImageToWebp, image_path)
+                    future = executor.submit(convert_image_to_webp, image_path)
                     futures.append(future)
 
     for future in futures:
         future.result()
 
-def traverseDirectoryForImagePngConversion(directory, compress, compressRate):
+def traverse_directory_for_image_png_conversion(directory, compress, compress_rate):
     for root, dirs, files in os.walk(directory):
         for file in files:
             if file.lower().endswith(('.jpg', '.jpeg', '.bmp', '.gif', '.webp')):
                 image_path = os.path.join(root, file)
-                convertImageToPng(image_path)
+                convert_image_to_png(image_path)
 
-def traverseDirectoryForImageJpgConversion(directory, compress, compressRate):
+def traverse_directory_for_image_jpg_conversion(directory, compress, compress_rate):
     for root, dirs, files in os.walk(directory):
         for file in files:
             if file.lower().endswith(('.png', '.bmp', '.gif', '.webp')):
                 image_path = os.path.join(root, file)
-                convertImageToJpg(image_path)
+                convert_image_to_jpg(image_path)
 
 '''
     compresses a directory into a cbz file
@@ -255,7 +255,7 @@ def traverseDirectoryForImageJpgConversion(directory, compress, compressRate):
     directory: the directory to compress
     output: the directory to save the cbz file to
 '''
-def compressDirectoryToComicBookFileCBZ(directory, output):
+def compress_directory_to_comic_book_file_cbz(directory, output):
     try:
         with zipfile.ZipFile(output, 'w') as zip_ref:
             for root, dirs, files in os.walk(directory):
@@ -274,7 +274,7 @@ def compressDirectoryToComicBookFileCBZ(directory, output):
     directory: the directory to compress
     output: the directory to save the cbr file to
 '''
-def compressDirectoryToComicBookFileCBR(directory, output):
+def compress_directory_to_comic_book_file_cbr(directory, output):
     try:
         with rarfile.RarFile(output, 'w') as rar_ref:
             for root, dirs, files in os.walk(directory):
@@ -293,7 +293,7 @@ def compressDirectoryToComicBookFileCBR(directory, output):
     directory: the directory to compress
     output: the directory to save the cb7 file to
 '''
-def compressDirectoryToComicBookFileCB7(directory, output):
+def compress_directory_to_comic_book_file_cb7(directory, output):
     try:
         with py7zr.SevenZipFile(output, mode='w') as archive:
             archive.writeall(directory, directory)
@@ -304,7 +304,7 @@ def compressDirectoryToComicBookFileCB7(directory, output):
         return False
     
     
-def deleteDirectory(directory):
+def delete_directory(directory):
     try:
         shutil.rmtree(directory)
         return True
@@ -321,10 +321,10 @@ def deleteDirectory(directory):
 
     returns a list of all the files in the directory
 '''
-def parseDirectoryForFiles(directory, recursive):
+def parse_directory_for_files(directory, recursive):
     files = []
-    for root, dirs, fileNames in os.walk(directory):
-        for file in fileNames:
+    for root, dirs, file_names in os.walk(directory):
+        for file in file_names:
             if file[0] == '.':  # Skip hidden files
                 continue
             files.append(os.path.join(root, file))
@@ -335,7 +335,7 @@ def parseDirectoryForFiles(directory, recursive):
 '''
     walks through a directory and creates a copy of the directory structure in the directory passed in
 '''
-def copyDirectoryStructure(directory, output):
+def copy_directory_structure(directory, output):
     for root, dirs, files in os.walk(directory):
         for dir in dirs:
             dir_path = os.path.join(root, dir)
@@ -343,7 +343,7 @@ def copyDirectoryStructure(directory, output):
             output_dir = os.path.join(output, relative_path)
             os.makedirs(output_dir, exist_ok=True)
     
-def outputDirectoryContents(directory):
+def output_directory_contents(directory):
     for root, dirs, files in os.walk(directory):
         print(f'Root: {root}')
         print(f'Directories: {dirs}')
@@ -351,22 +351,22 @@ def outputDirectoryContents(directory):
         print('')
 
 
-def getFileNameFromPath(path):
+def get_file_name_from_path(path):
     filename = os.path.basename(path)
     filename_without_extension = os.path.splitext(filename)[0]
     return filename_without_extension
 
-def convertComicBook(input, output, convertExtension, convertImageFileType, compress, compressRate, comicinfo, inputDirectory=None):
-    tempWorkDir = createTempDirectory(output)
+def convert_comic_book(input, output, convert_extension, convert_image_file_type, compress, compress_rate, comicinfo, input_directory=None):
+    temp_work_dir = create_temp_directory(output)
 
-    fileCompressionType = determine_compression_type(input)
+    file_compression_type = determine_compression_type(input)
 
-    if fileCompressionType == 'ZIP':
-        decompressZipFile(input, tempWorkDir)
-    elif fileCompressionType == 'RAR':
-        status = decompressRarFile(input, tempWorkDir)
-    elif fileCompressionType == '7Z':
-        decompress7zFile(input, tempWorkDir)
+    if file_compression_type == 'ZIP':
+        decompress_zip_file(input, temp_work_dir)
+    elif file_compression_type == 'RAR':
+        status = decompress_rar_file(input, temp_work_dir)
+    elif file_compression_type == '7Z':
+        decompress_7z_file(input, temp_work_dir)
     else:
         print('Error: Unsupported compression type')
         return False
@@ -375,88 +375,87 @@ def convertComicBook(input, output, convertExtension, convertImageFileType, comp
     #print(compressRate)
     #print(comicinfo)
     
-    if convertImageFileType == 'webp':
+    if convert_image_file_type == 'webp':
         #print('Converting images to webp')
-        traverseDirectoryForImageWebpConversion(tempWorkDir, compress, compressRate)
-    elif convertImageFileType == 'png':
-        traverseDirectoryForImagePngConversion(tempWorkDir, compress, compressRate)
-    elif convertImageFileType == 'jpg':
-        traverseDirectoryForImageJpgConversion(tempWorkDir, compress, compressRate)
-    elif convertImageFileType == 'original':
+        traverse_directory_for_image_webp_conversion(temp_work_dir, compress, compress_rate)
+    elif convert_image_file_type == 'png':
+        traverse_directory_for_image_png_conversion(temp_work_dir, compress, compress_rate)
+    elif convert_image_file_type == 'jpg':
+        traverse_directory_for_image_jpg_conversion(temp_work_dir, compress, compress_rate)
+    elif convert_image_file_type == 'original':
         pass
     else:
         print('Error: Unsupported image conversion type')
         return False
 
-    outputFilePath = None
+    output_file_path = None
 
-    if inputDirectory is not None:
+    if input_directory is not None:
         # remove the input directory from the input file path
-        inputDirectory = os.path.abspath(inputDirectory)
-        inputDirectory = inputDirectory + '/'
-        inputPath = input.replace(inputDirectory, '/')
-        fileName = getFileNameFromPath(inputPath)
+        input_directory = os.path.abspath(input_directory)
+        input_directory = input_directory + '/'
+        input_path = input.replace(input_directory, '/')
+        file_name = get_file_name_from_path(input_path)
 
-        splitPath = inputPath.split('/')
-        splitPath.pop()  # remove the file name from the path
-        inputPath = '/'.join(splitPath)
+        split_path = input_path.split('/')
+        split_path.pop()  # remove the file name from the path
+        input_path = '/'.join(split_path)
         # create the output file path
 
-        outputFilePath = output + inputPath + '/' + fileName + '.' + convertExtension
-        print('output ' + outputFilePath)
+        output_file_path = output + input_path + '/' + file_name + '.' + convert_extension
+        print('output ' + output_file_path)
     else:
-        outputFilePath = output + '/' + getFileNameFromPath(input) + '.' + convertExtension
+        output_file_path = output + '/' + get_file_name_from_path(input) + '.' + convert_extension
 
 
-    if outputFilePath is None:
+    if output_file_path is None:
         print('Error: Output file path is not set')
         exit(1)
 
-    if(convertExtension == 'cbz'):
-        compressDirectoryToComicBookFileCBZ(tempWorkDir, outputFilePath)
-    elif(convertExtension == 'cbr'):
-        compressDirectoryToComicBookFileCBR(tempWorkDir, outputFilePath)
-    elif(convertExtension == 'cb7'):
-        compressDirectoryToComicBookFileCB7(tempWorkDir, outputFilePath)
+    if(convert_extension == 'cbz'):
+        compress_directory_to_comic_book_file_cbz(temp_work_dir, output_file_path)
+    elif(convert_extension == 'cbr'):
+        compress_directory_to_comic_book_file_cbr(temp_work_dir, output_file_path)
+    elif(convert_extension == 'cb7'):
+        compress_directory_to_comic_book_file_cb7(temp_work_dir, output_file_path)
     else:
         print('Error: Unsupported conversion extension type')
         return False
 
-    deleteDirectory(tempWorkDir)
+    delete_directory(temp_work_dir)
 
 
 if __name__ == '__main__':
-    args = parseArguments()
-    if not validateArguments(args):
+    args = parse_arguments()
+    if not validate_arguments(args):
         exit(1)
 
-    inputType = checkIfInputIsFileOrDirectory(args.input)
-    if inputType is None:
+    input_type = check_if_input_is_file_or_directory(args.input)
+    if input_type is None:
         print('Error: Input value is not valid')
         exit(1)
 
-    outputValid = checkIfDirectoryExists(args.output)
-    if not outputValid:
+    output_valid = check_if_directory_exists(args.output)
+    if not output_valid:
         print('Error: Output directory does not exist')
         exit(1)
 
 
-    if inputType == 'file':
-        if(checkIfFileIsComicBookFile(args.input)):
-            convertComicBook(args.input, args.output, args.convert_extension, args.convert_image_file_type, args.compress, args.compress_rate, args.comicinfo)
+    if input_type == 'file':
+        if(check_if_file_is_comic_book_file(args.input)):
+            convert_comic_book(args.input, args.output, args.convert_extension, args.convert_image_file_type, args.compress, args.compress_rate, args.comicinfo)
         else:
             print('Error: Input file is not a comic book file')
 
-    startTime = time.time()
-    if inputType == 'directory':
-        files = parseDirectoryForFiles(args.input, args.recursive)
+    start_time = time.time()
+    if input_type == 'directory':
+        files = parse_directory_for_files(args.input, args.recursive)
 
-        copyDirectoryStructure(args.input, args.output)
+        copy_directory_structure(args.input, args.output)
 
         for file in files:
-            if(checkIfFileIsComicBookFile(file)):
+            if(check_if_file_is_comic_book_file(file)):
                 print(f'Converting {file} - index {files.index(file) + 1} of {len(files)}')
-                convertComicBook(file, args.output, args.convert_extension, args.convert_image_file_type, args.compress, args.compress_rate, args.comicinfo, args.input)
+                convert_comic_book(file, args.output, args.convert_extension, args.convert_image_file_type, args.compress, args.compress_rate, args.comicinfo, args.input)
     
     #print(f'Time taken: {time.time() - startTime}')
-        
